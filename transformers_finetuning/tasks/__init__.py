@@ -1,5 +1,6 @@
 from . import text_classification as text_classification
 from . import text_regression as text_regression
+from .mappers import TextMapper
 
 
 _available_tasks = {
@@ -22,3 +23,10 @@ def get_task(task_name, *args, **kwargs):
         raise ValueError(f"'{task_name}' is not a valid task.")
     else:
         return _available_tasks[task_name](*args, **kwargs)
+
+
+def get_dataset_mapper(tokenizer, text_pairs=False):
+    if text_pairs:
+        return TextMapper.textpair2token(tokenizer)
+    else:
+        return TextMapper.text2token(tokenizer)
