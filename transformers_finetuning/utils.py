@@ -41,8 +41,8 @@ def parse_arguments():
 
     parser.add_argument(
         "--dataprep_batch_size",
-        help=("Batch size for dataset tokenization."
-              "For training, use `batch_size'"),
+        help=("Batch size for dataset tokenization. For training, "
+              "see `per_device_train_batch_size' argument"),
         type=int,
         default=1000)
 
@@ -56,9 +56,72 @@ def parse_arguments():
     # MODEL ARGUMENTS
     parser.add_argument(
         "--model_path",
-        help="",
+        help="Path or name of the model and tokenizer.",
         type=str,
-        default=None,
+        required=True)
+
+    # TODO: this is a task specific argument.
+    parser.add_argument(
+        "--num_labels",
+        help="Number of outputs in the classification head.",
+        type=int,
+        default=None)
+
+    # TRAINING ARGUMENTS
+    parser.add_argument(
+        "--output_dir",
+        help=("The output directory where the checkpoints will be saved. "
+              "Defaults to current directory."),
+        type=str,
+        default=".")
+
+    parser.add_argument(
+        "--per_device_eval_batch_size",
+        help="Batch size per GPU/TPU core/CPU for evaluation.",
+        type=int,
+        required=True)
+
+    parser.add_argument(
+        "--num_train_epochs",
+        help="Total number of training epochs to perform.",
+        type=int,
+        required=True
+    )
+
+    parser.add_argument(
+        "--lr_scheduler",
+        help="The scheduler type to use. Default: 'linear'.",
+        type=str,
+        default='linear'
+    )
+
+    # OPTIMIZATION ARGUMENTS
+    parser.add_argument(
+        "--metric_name",
+        help="Path or name of the metric to optimize.",
+        type=str,
+        required=True)
+
+    parser.add_argument(
+        "--minimize_metric",
+        help=("To minimize the optimization metric (`metric_name'). "
+              "By default, the metric will be maximized."),
+        action="store_true")
+
+    parser.add_argument(
+        "--per_device_train_batch_size",
+        help=("Batch size per GPU/TPU core/CPU for training. "
+              "Integer values must be passed separated by coma. "
+              "Example: '--per_device_train_batch_size 16,32,64'."),
+        type=lambda s: [int(item) for item in s.split(',')],
+        required=True)
+
+    parser.add_argument(
+        "--learning_rate",
+        help=("The initial learning rate for AdamW optimizer. "
+              "Float values must be passed separated by coma. "
+              "Example: '--learning_rate 1e-5,5e-5'."),
+        type=lambda s: [float(item) for item in s.split(',')],
         required=True)
 
     args = parser.parse_args()
