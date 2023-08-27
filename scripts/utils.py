@@ -1,6 +1,6 @@
 import argparse
 
-from .tasks import get_available_tasks
+from ..src.hf_extras.tasks import get_available_tasks
 
 
 def parse_arguments():
