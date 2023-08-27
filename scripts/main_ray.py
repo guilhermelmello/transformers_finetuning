@@ -1,7 +1,7 @@
+from ray import tune
 from transformers_finetuning import tasks
 from transformers_finetuning import utils
 
-from optuna.samplers import GridSampler
 from transformers import (
     AutoTokenizer,
     DataCollatorWithPadding,
@@ -93,7 +93,7 @@ def compute_metrics(eval_pred):
 def model_init(trial):
     auto_model = tasks.get_automodel(args.task_name)
     model = auto_model.from_pretrained(
-        args.model_name,
+        args.model_path,
         num_labels=args.num_labels  # TODO: this is task specific
     )
     return model
@@ -119,6 +119,7 @@ training_args = TrainingArguments(
     metric_for_best_model=f"eval_{args.metric_name}",
     greater_is_better=(not args.minimize_metric),
     save_total_limit=1,
+    disable_tqdm=True,
 )
 
 trainer = Trainer(
@@ -154,47 +155,69 @@ for param in search_space.keys():
     n_trials *= len(search_space[param])
 
 
-def compute_objective(metrics):
-    _best_scores.append(metrics[f"eval_{args.metric_name}"])
+# def compute_objective(metrics):
+#     _best_scores.append(metrics[f"eval_{args.metric_name}"])
 
-    if args.minimize_metric:
-        return min(_best_scores)
-    else:
-        return max(_best_scores)
+#     if args.minimize_metric:
+#         return min(_best_scores)
+#     else:
+#         return max(_best_scores)
+def compute_objective(metrics):
+    return metrics[f"eval_{args.metric_name}"]
 
 
 def hp_space(trial):
-    global _best_scores
-    _best_scores = list()
+    # global _best_scores
+    # _best_scores = list()
 
     search_values = {
-        "learning_rate": trial.suggest_categorical(
-                "learning_rate",
-                search_space["learning_rate"]),
-        "per_device_train_batch_size": trial.suggest_categorical(
-                "per_device_train_batch_size",
-                search_space["per_device_train_batch_size"]),
+        'learning_rate': tune.grid_search(args.learning_rate),
+        'per_device_train_batch_size': tune.grid_search(args.per_device_train_batch_size),
     }
 
     return search_values
 
 
+study_name = f'{args.model_path}_finetuned_{args.dataset_path}'.replace('/', '-')
+if args.dataset_config is not None:
+    study_name += f"_{args.dataset_config}"
+
+# scheduler = tune.schedulers.PopulationBasedTraining(
+#     time_attr="epoch",
+#     metric=f"eval_{args.metric_name}",
+#     mode='min' if args.minimize_metric else 'max',
+#     perturbation_interval=1,    # <<<< ISSO PRECISA MUDAR DE ACORDO COM O NÚMERO DE ITERAÇÕES MÁXIMO.
+#     # burn_in_period=3,
+#     hyperparam_mutations={
+#         "learning_rate": tune.choice(args.learning_rate),
+#         "per_device_train_batch_size": tune.choice(args.per_device_train_batch_size),
+#     }
+# )
+
 best_trial = trainer.hyperparameter_search(
     compute_objective=compute_objective,
     direction='minimize' if args.minimize_metric else 'maximize',
-    backend='optuna',
+    backend='ray',
     hp_space=hp_space,
-    n_trials=n_trials,
-    sampler=GridSampler(search_space),
-    storage=f'sqlite:///{args.output_dir}/optuna_storage.db',
-    study_name=f'{args.model_path}_finetuned_{args.dataset_path}',
+    n_trials=1,
+
+    # scheduler=scheduler,
+    keep_checkpoints_num=1,
+    checkpoint_score_attr="epoch",
+    # progress_reporter
+    local_dir=f"{args.output_dir}/ray_results",
+    name=study_name,
+    log_to_file=True,
 )
 
 
 print("=========================")
 print("Hyperparameter Selection:")
 print(f"Model: {args.model_path}")
-print(f"Dataset: {args.dataset_path} ({args.dataset_config})")
+if args.dataset_config is None:
+    print(f"Dataset: {args.dataset_path}")
+else:
+    print(f"Dataset: {args.dataset_path} ({args.dataset_config})")
 print("Best Trial:")
 print(f"\tRun ID: {best_trial.run_id}")
 print(f"\tObjective: {best_trial.objective}")
