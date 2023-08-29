@@ -1,6 +1,5 @@
 from . import text_classification
 from . import text_regression
-from .mappers import TextMapper
 
 from transformers import AutoModelForSequenceClassification
 
@@ -42,10 +41,3 @@ def get_automodel(task_name):
         raise ValueError(f"Could not find an AutoModel for '{task_name}'.")
     else:
         return _auto_models[task_name]
-
-
-def get_dataset_mapper(tokenizer, text_pairs=False):
-    if text_pairs:
-        return TextMapper.textpair2token(tokenizer)
-    else:
-        return TextMapper.text2token(tokenizer)
