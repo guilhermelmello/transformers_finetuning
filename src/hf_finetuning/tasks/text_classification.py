@@ -1,103 +1,82 @@
-"""Text Classification Templates
+from .base_task import BaseTask
 
-Text classification task templates to standardize `datasets.Dataset`
-column names and types for training.
-"""
-import copy
-from dataclasses import dataclass
-from datasets import ClassLabel, Features, TaskTemplate, Value
-from typing import ClassVar, Dict
+from argparse import ArgumentParser
+from transformers import AutoModelForSequenceClassification
+
+import numpy as np
 
 
-@dataclass(frozen=True)
-class TextClassification(TaskTemplate):
-    """Dataset casting for single sentences tasks.
-
-    Reimplementation of the original text classification template:
-    https://github.com/huggingface/datasets/blob/main/src/datasets/tasks/text_classification.py
-    """
-    task: str = "text-classification"
-    text_column: str = "text"
-    label_column: str = "label"
-
-    input_schema: ClassVar[Features] = Features({
-        "text": Value("string")
-    })
-    label_schema: ClassVar[Features] = Features({
-        "label": ClassLabel
-    })
-
-    def align_with_features(self, features):
-        if self.label_column not in features:
-            msg = f"Column {self.label_column} is not present in features."
-            raise ValueError(msg)
-        if not isinstance(features[self.label_column], ClassLabel):
-            msg = f"Column {self.label_column} is not a ClassLabel."
-            raise ValueError(msg)
-
-        # update label schema to reflect label feature
-        label_schema = self.label_schema.copy()
-        label_schema["label"] = features[self.label_column]
-
-        # updated task template
-        task_template = copy.deepcopy(self)
-        task_template.__dict__['label_schema'] = label_schema
-
-        return task_template
-
-    @property
-    def column_mapping(self) -> Dict[str, str]:
-        return {
-            self.text_column: "text",
-            self.label_column: "label"
-        }
+# Argument Parser for arguments required
+# by TaskBase.auto_model.from_pretrained
+def _arg_parser():
+    arg_parser = ArgumentParser()
+    arg_parser.add_argument(
+        "--num_labels",
+        help="Defines the number of outputs in the last layer.",
+        type=int,
+        required=True
+    )
+    return arg_parser
 
 
-@dataclass(frozen=True)
-class TextPairClassification(TaskTemplate):
-    """Dataset casting for pair of sentences tasks.
+class TextClassificationTask(BaseTask):
+    name = "text-classification"
+    auto_model = AutoModelForSequenceClassification
+    input_column_names = ["text"]
+    output_column_names = ["label"]
 
-    HuggingFace's `datasets` does not provide a `TextClassification` task
-    template that standardize pairs of sentences as input. This template is
-    an extension of the original `TextClassification` for pair of sentences.
+    @staticmethod
+    def column_mapping(dataset, text_column, label_column):
+        dataset = dataset.rename_column(text_column, "text")
+        dataset = dataset.rename_column(label_column, "label")
+
+        return dataset
+
+    @staticmethod
+    def parse_arguments(namespace):
+        parser = _arg_parser()
+        args = parser.parse_known_args(namespace=namespace)
+        return args[0]
+
+    @staticmethod
+    def get_auto_model_arguments(args):
+        return dict(
+            num_labels=args.num_labels
+        )
+
+    @staticmethod
+    def logits_to_outputs(logits):
+        # receives a batch of logits and return the prediction index
+        return np.argmax(logits, -1)
 
 
-    """
-    task: str = "text-pair-classification"
-    text_column: str = "text"
-    text_pair_column: str = "text_pair"
-    label_column: str = "label"
+class TextPairClassificationTask(BaseTask):
+    name = "text-pair-classification"
+    auto_model = AutoModelForSequenceClassification
+    input_column_names = ["text", "text_pair"]
+    output_column_names = ["label"]
 
-    input_schema: ClassVar[Features] = Features({
-        "text": Value("string"),
-        "text_pair": Value("string")
-    })
-    label_schema: ClassVar[Features] = Features({
-        "label": ClassLabel
-    })
+    @staticmethod
+    def column_mapping(dataset, text_column, text_pair_column, label_column):
+        dataset = dataset.rename_column(text_column, "text")
+        dataset = dataset.rename_column(text_pair_column, "text_pair")
+        dataset = dataset.rename_column(label_column, "label")
 
-    def align_with_features(self, features):
-        if self.label_column not in features:
-            msg = f"Column {self.label_column} is not present in features."
-            raise ValueError(msg)
-        if not isinstance(features[self.label_column], ClassLabel):
-            msg = f"Column {self.label_column} is not a ClassLabel."
-            raise ValueError(msg)
+        return dataset
 
-        # update label schema to reflect label feature
-        label_schema = self.label_schema.copy()
-        label_schema["label"] = features[self.label_column]
+    @staticmethod
+    def parse_arguments(namespace):
+        parser = _arg_parser()
+        args = parser.parse_known_args(namespace=namespace)
+        return args[0]
 
-        # updated task template
-        task_template = copy.deepcopy(self)
-        task_template.__dict__['label_schema'] = label_schema
+    @staticmethod
+    def get_auto_model_arguments(args):
+        return dict(
+            num_labels=args.num_labels
+        )
 
-        return task_template
-
-    @property
-    def column_mapping(self) -> Dict[str, str]:
-        return {
-            self.text_column: "text",
-            self.text_pair_column: "text_pair",
-            self.label_column: "label"
-        }
+    @staticmethod
+    def logits_to_outputs(logits):
+        # receives a batch of logits and return the prediction index
+        return np.argmax(logits, -1)

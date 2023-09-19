@@ -1,4 +1,4 @@
-from mappers import TextMapper
+from .mappers import TextMapper
 
 
 def get_dataset_mapper(tokenizer, text_pairs=False):

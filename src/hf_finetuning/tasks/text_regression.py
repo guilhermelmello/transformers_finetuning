@@ -1,126 +1,54 @@
-"""Text Regression Templates
+from .base_task import BaseTask
 
-Task templates for text regression problems. This templates are used to
-standardize `datasets.Dataset` column names and types for training.
-
-Note:
-    Since HuggingFace's does not provide task templates for regression,
-    this module implements those templates. The original `TextClassification`
-    template forces the label to be a `ClassLabel` feature and raises an error
-    when receiving something different (integer or floats).
-
-    Implementation based on HuggingFace's text classification template:
-
-    https://github.com/huggingface/datasets/blob/main/src/datasets/tasks/text_classification.py
-
-"""
-import copy
-from dataclasses import dataclass
-from datasets import Features, TaskTemplate, Value
-from pyarrow import types
-from typing import ClassVar, Dict, Union
+from argparse import ArgumentParser
+from transformers import AutoModelForSequenceClassification
 
 
-@dataclass(frozen=True)
-class TextRegression(TaskTemplate):
-    """Dataset casting for single sentences tasks."""
-    task: str = "text-regression"
-    text_column: str = "text"
-    label_column: str = "label"
+class TextRegressionTask(BaseTask):
+    name = "text-regression"
+    auto_model = AutoModelForSequenceClassification
+    input_column_names = ["text"]
+    output_column_names = ["target"]
 
-    input_schema: ClassVar[Features] = Features({
-        "text": Value("string")
-    })
-    label_schema: ClassVar[Features] = Features({
-        "label": Union[int, float]
-    })
+    @staticmethod
+    def column_mapping(dataset, text_column, target_column):
+        dataset = dataset.rename_column(text_column, "text")
+        dataset = dataset.rename_column(target_column, "target")
 
-    def align_with_features(self, features):
-        if self.label_column not in features:
-            msg = f"Column {self.label_column} is not present in features."
-            raise ValueError(msg)
+        return dataset
 
-        label = features[self.label_column]
-        if isinstance(label, Value):
-            is_int = types.is_integer(label.pa_type)
-            is_float = types.is_floating(label.pa_type)
-            if not (is_int or is_float):
-                raise ValueError((
-                    f"Target column `{self.label_column}` "
-                    "must be int or float."))
-        else:
-            raise ValueError((
-                f"Target column `{self.label_column}` "
-                "must be a `Value` feature."
-            ))
+    @staticmethod
+    def parse_arguments(namespace):
+        # no arguments required by this task
+        return namespace
 
-        # update label schema to reflect label feature
-        label_schema = self.label_schema.copy()
-        label_schema["label"] = features[self.label_column]
-
-        # updated task template
-        task_template = copy.deepcopy(self)
-        task_template.__dict__['label_schema'] = label_schema
-
-        return task_template
-
-    @property
-    def column_mapping(self) -> Dict[str, str]:
-        return {
-            self.text_column: "text",
-            self.label_column: "label"
-        }
+    @staticmethod
+    def get_auto_model_arguments(*args, **kwargs):
+        return dict(
+            num_labels=1
+        )
 
 
-@dataclass(frozen=True)
-class TextPairRegression(TaskTemplate):
-    """Dataset casting for pair of sentences tasks."""
-    task: str = "text-pair-regression"
-    text_column: str = "text"
-    text_pair_column: str = "text_pair"
-    label_column: str = "label"
+class TextPairRegressionTask(BaseTask):
+    name = "text-pair-regression"
+    auto_model = AutoModelForSequenceClassification
+    input_column_names = ["text", "text_pair"]
+    output_column_names = ["target"]
 
-    input_schema: ClassVar[Features] = Features({
-        "text": Value("string"),
-        "text_pair": Value("string")
-    })
-    label_schema: ClassVar[Features] = Features({
-        "label": Union[int, float]
-    })
+    @staticmethod
+    def column_mapping(dataset, text_column, text_pair_column, target_column):
+        dataset = dataset.rename_column(text_column, "text")
+        dataset = dataset.rename_column(text_pair_column, "text_pair")
+        dataset = dataset.rename_column(target_column, "target")
 
-    def align_with_features(self, features):
-        if self.label_column not in features:
-            msg = f"Column {self.label_column} is not present in features."
-            raise ValueError(msg)
+        return dataset
 
-        label = features[self.label_column]
-        if isinstance(label, Value):
-            is_int = types.is_integer(label.pa_type)
-            is_float = types.is_floating(label.pa_type)
-            if not (is_int or is_float):
-                raise ValueError((
-                    f"Target column `{self.label_column}` "
-                    "must be int or float."))
-        else:
-            raise ValueError((
-                f"Target column `{self.label_column}` "
-                "must be a `Value` feature."
-            ))
+    @staticmethod
+    def get_argument_parser(namespace):
+        return namespace
 
-        # update label schema to reflect label feature
-        label_schema = self.label_schema.copy()
-        label_schema["label"] = features[self.label_column]
-
-        # updated task template
-        task_template = copy.deepcopy(self)
-        task_template.__dict__['label_schema'] = label_schema
-
-        return task_template
-
-    @property
-    def column_mapping(self) -> Dict[str, str]:
-        return {
-            self.text_column: "text",
-            self.text_pair_column: "text_pair",
-            self.label_column: "label"
-        }
+    @staticmethod
+    def get_auto_model_arguments(*args, **kwargs):
+        return dict(
+            num_labels=1
+        )
