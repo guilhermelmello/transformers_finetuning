@@ -161,3 +161,7 @@ cython_debug/
 
 # VS Code Stuff
 .vscode/
+
+# Development setups
+# Relative symlink for script development
+scripts/hf_finetuning
