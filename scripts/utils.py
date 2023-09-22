@@ -190,6 +190,31 @@ def parse_arguments():
         action="store_true"
     )
 
+    parser.add_argument(
+        "--report_to",
+        help=(
+            "The name of the integration to report the results and logs to. See"
+            "Transformers.TrainingArgument for supported platforms. By default,"
+            " no report is enabled."),
+        type=str,
+        default="none"
+    )
+
+    parser.add_argument(
+        "--run_name",
+        help="A descriptor for the run. Typically used by wandb for logging.",
+        type=str,
+        required=False
+    )
+
+    parser.add_argument(
+        "--run_project",
+        help="Name of the wandb project to report.",
+        type=str,
+        required=False,
+        default=None
+    )
+
 
     # OPTIMIZATION ARGUMENTS
     # parser.add_argument(

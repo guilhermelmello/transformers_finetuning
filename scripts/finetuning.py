@@ -6,6 +6,7 @@ TODO:
 - auto push to hub?
 - add logging system
 """
+from dotenv import load_dotenv
 from transformers import (
     AutoTokenizer,
     DataCollatorWithPadding,
@@ -19,7 +20,9 @@ import hf_finetuning as hff
 import hf_finetuning.tasks as hff_tasks
 import numpy as np
 
+import os
 import utils
+import wandb
 
 
 #----------------------------#
@@ -35,6 +38,22 @@ task = hff_tasks.get_task(task_name=args.task_name)
 
 # parse task arguments
 args = task.parse_arguments(args)
+
+
+#----------------------------#
+#--- LOGGING SETUP ----------#
+#----------------------------#
+
+
+load_dotenv()
+
+
+# wandb setup
+if args.report_to == "wandb":
+    wandb.login(key=os.environ["WANDB_API_TOKEN"])
+
+    if args.run_project is not None:
+        os.environ["WANDB_PROJECT"] = args.run_project
 
 
 #----------------------------#
@@ -159,11 +178,12 @@ training_args = TrainingArguments(
     load_best_model_at_end=True,
     save_total_limit=1,
 
+    report_to=args.report_to,
+    run_name=args.run_name
+
     # disable_tqdm=True,
     # fp16=True,                -> training speedup?
     # dataloader_num_workers    -> training speedup?
-    # run_name                  -> wandb
-    # report_to="wandb"
     # push_to_hub
     # auto_find_batch_size
 )
