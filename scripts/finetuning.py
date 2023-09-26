@@ -18,7 +18,6 @@ import datasets
 import evaluate
 import hf_finetuning as hff
 import hf_finetuning.tasks as hff_tasks
-import numpy as np
 
 import os
 import utils
