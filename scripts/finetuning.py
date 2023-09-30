@@ -2,9 +2,8 @@
 
 TODO:
 - add metric extra arguemnts
-- add support for wandb report
 - auto push to hub?
-- add logging system
+- add logging system?
 """
 from dotenv import load_dotenv
 from transformers import (
@@ -151,10 +150,14 @@ print("Model:", model)
 # Training Arguments
 #--------------------
 
-# `per_device_train_batch_size' and `learning_rate' arguments
-# are not passed here since they form a searching space.
+output_dir = os.path.join(
+    args.output_dir,
+    args.run_project or "",
+    args.run_name or ""
+)
+
 training_args = TrainingArguments(
-    output_dir=args.output_dir,
+    output_dir=output_dir,
 
     num_train_epochs=args.num_train_epochs,
     per_device_train_batch_size=args.per_device_train_batch_size,
@@ -178,11 +181,11 @@ training_args = TrainingArguments(
     save_total_limit=1,
 
     report_to=args.report_to,
-    run_name=args.run_name
+    run_name=args.run_name,
 
     # disable_tqdm=True,
-    # fp16=True,                -> training speedup?
-    # dataloader_num_workers    -> training speedup?
+    # fp16=True,                  # -> slower training
+    # dataloader_num_workers=32   # -> slower training
     # push_to_hub
     # auto_find_batch_size
 )
