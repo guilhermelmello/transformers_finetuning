@@ -2,6 +2,7 @@ accelerate==0.22.0
 datasets==2.14.4
 evaluate==0.4.0
 python-dotenv==1.0.0
+ray[tune]==2.6.3
 tokenizers==0.13.3
 transformers==4.32.1
 wandb==0.15.10

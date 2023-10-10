@@ -3,6 +3,47 @@ import argparse
 from hf_finetuning.tasks import get_available_tasks
 
 
+def get_argument_as_list_type(sep=',', item_type=str):
+    """Create a list type for command line arguments.
+
+    This method define a new type definition to be use as
+    an argument type when parsing command line arguments
+    that receive a list as input.
+
+    Parameters
+    ----------
+    sep: str (default: ',')
+        The simbol used do separate element in the input.
+    item_type: Type
+        Defines the type of each item in the input.
+    """
+    arg_type = lambda arg : [item_type(item) for item in arg.split(sep)]
+    return arg_type
+
+
+def get_argument_as_item_list_type(sep=',', item_type=str):
+    """Create a list (or item) type for command line arguments.
+
+    This method define a new type definition to be use as
+    an argument type when parsing command line arguments
+    that can receive a list or single item as input.
+
+    Parameters
+    ----------
+    sep: str (default: ',')
+        The simbol used do separate element in the input.
+    item_type: Type
+        Defines the type of each item in the input.
+    """
+    def arg_type(arg) :
+        items = [item_type(item) for item in arg.split(sep)]
+        if len(items) == 1:
+            return items[0]
+        return items
+
+    return arg_type
+
+
 def parse_arguments():
     parser = argparse.ArgumentParser(
         description="Automatic finetuning for Transformer models."
@@ -100,13 +141,6 @@ def parse_arguments():
     )
 
     parser.add_argument(
-        "--per_device_train_batch_size",
-        help="Batch size per GPU/TPU core/CPU for training.",
-        type=int,
-        default=8
-    )
-
-    parser.add_argument(
         "--per_device_eval_batch_size",
         help="Batch size per GPU/TPU core/CPU for evaluation.",
         type=int,
@@ -118,13 +152,6 @@ def parse_arguments():
         help="The scheduler type to use. Default: 'linear'.",
         type=str,
         default='linear'
-    )
-
-    parser.add_argument(
-        "--learning_rate",
-        help="The initial learning rate for AdamW optimizer.",
-        type=float,
-        default=5e-5
     )
 
     parser.add_argument(
@@ -204,7 +231,8 @@ def parse_arguments():
         "--run_name",
         help="A descriptor for the run. Typically used by wandb for logging.",
         type=str,
-        required=False
+        required=False,
+        default=None
     )
 
     parser.add_argument(
@@ -217,33 +245,48 @@ def parse_arguments():
 
 
     # OPTIMIZATION ARGUMENTS
-    # parser.add_argument(
-    #     "--metric_name",
-    #     help="Path or name of the metric to optimize.",
-    #     type=str,
-    #     required=True)
 
-    # parser.add_argument(
-    #     "--minimize_metric",
-    #     help=("To minimize the optimization metric (`--metric_name'). "
-    #           "By default, the metric will be maximized."),
-    #     action="store_true")
+    parser.add_argument(
+        "--per_device_train_batch_size",
+        help=(
+            "Batch size per GPU/TPU core/CPU for training. If the script "
+            "is using hyperparameter search, integer values can be passed "
+            "separated by coma ('--per_device_train_batch_size 16,32,64')."),
+        type=get_argument_as_item_list_type(sep=',', item_type=int),
+        required=False,
+        default=8)
 
-    # parser.add_argument(
-    #     "--per_device_train_batch_size",
-    #     help=("Batch size per GPU/TPU core/CPU for training. "
-    #           "Integer values must be passed separated by coma. "
-    #           "Example: '--per_device_train_batch_size 16,32,64'."),
-    #     type=lambda s: [int(item) for item in s.split(',')],
-    #     required=True)
+    parser.add_argument(
+        "--learning_rate",
+        help=(
+            "The initial learning rate for AdamW optimizer. If the script "
+            "is using hyperparameter search, float values can be passed "
+            "separated by coma ('--learning_rate 1e-5,5e-5')."),
+        type=get_argument_as_item_list_type(sep=',', item_type=float),
+        required=False,
+        default=5e-5)
 
-    # parser.add_argument(
-    #     "--learning_rate",
-    #     help=("The initial learning rate for AdamW optimizer. "
-    #           "Float values must be passed separated by coma. "
-    #           "Example: '--learning_rate 1e-5,5e-5'."),
-    #     type=lambda s: [float(item) for item in s.split(',')],
-    #     required=True)
+    parser.add_argument(
+        "--perturbation_interval",
+        help=(
+            "Models will be considered for perturbation at this interval of "
+            "epoch (time attribute). It incurs in checkpoint overhead, so "
+            "you shouldn't set this to be too frequent. Defaults to 1."),
+        type=int,
+        required=False,
+        default=1
+    )
+
+    parser.add_argument(
+        "--burn_in_period",
+        help=(
+            "Models will be considered for perturbation at this interval of "
+            "epoch (time attribute). It incurs in checkpoint overhead, so "
+            "you shouldn't set this to be too frequent. Defaults to 1."),
+        type=int,
+        required=False,
+        default=1
+    )
 
     args = parser.parse_known_args()[0]
     return args
